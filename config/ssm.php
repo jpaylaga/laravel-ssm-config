@@ -40,4 +40,14 @@ return [
         'MAIL_PASSWORD' => 'mail.mailers.smtp.password',
     ],
 
+    /*
+     * Optional JSON route that reports whether the mapped keys are loaded,
+     * without ever exposing a value. Off by default.
+     */
+    'health' => [
+        'enabled' => (bool) env('SSM_HEALTH_ENABLED', false),
+        'path' => '/ssm/health',
+        'middleware' => [],
+    ],
+
 ];

@@ -5,10 +5,12 @@ namespace Jpaylaga\SsmConfig;
 use Aws\Ssm\SsmClient;
 use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Jpaylaga\SsmConfig\Commands\CacheCommand;
 use Jpaylaga\SsmConfig\Commands\DiffCommand;
 use Jpaylaga\SsmConfig\Commands\PullCommand;
+use Jpaylaga\SsmConfig\Http\HealthController;
 use Jpaylaga\SsmConfig\Steps\ApplyConfig;
 use Jpaylaga\SsmConfig\Steps\FetchParameters;
 use Jpaylaga\SsmConfig\Steps\MapParametersToConfig;
@@ -38,6 +40,12 @@ class SsmConfigServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([CacheCommand::class, DiffCommand::class, PullCommand::class]);
+        }
+
+        if ($this->config($this->app)->get('ssm.health.enabled')) {
+            Route::get($this->config($this->app)->get('ssm.health.path', '/ssm/health'), HealthController::class)
+                ->name('ssm.health')
+                ->middleware($this->config($this->app)->get('ssm.health.middleware', []));
         }
     }
 

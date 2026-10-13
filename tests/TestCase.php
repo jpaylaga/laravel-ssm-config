@@ -77,6 +77,7 @@ abstract class TestCase extends Orchestra
                 'DB_PASSWORD' => 'database.connections.mysql.password',
                 'REDIS_PASSWORD' => ['database.redis.default.password', 'database.redis.cache.password'],
             ],
+            'health' => ['enabled' => false, 'path' => '/ssm/health', 'middleware' => []],
         ], $this->ssmConfig));
     }
 

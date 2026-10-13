@@ -16,6 +16,7 @@ Laravel config from **AWS SSM Parameter Store**: fetched at boot on hosts withou
 - A deploy ends with `php artisan ssm:cache`, so the host runs from a config cache that includes the SSM values.
 - `php artisan ssm:diff` answers "does this host still match Parameter Store?" with statuses only, so its output is safe to paste into a ticket.
 - `php artisan ssm:pull` fills a developer's local `.env` from the same path.
+- An opt-in health route tells a post-deploy smoke check whether every mapped key is loaded.
 
 **Limitations**
 - Built for one setup (below): EC2 hosts with instance profiles, one Parameter Store path per host, config cached per host.
@@ -60,7 +61,7 @@ The long version is in [laravel-fleet's README](https://github.com/jpaylaga/lara
 - Config cached: nothing happens. The cache is the runtime source and no request ever calls SSM.
 - Config not cached and `ssm.enabled` off: nothing happens. Config comes from the files and `.env`, as in local development.
 - Otherwise: `FetchParameters` → `MapParametersToConfig` → `ApplyConfig`. One recursive, decrypted, paginated `GetParametersByPath` call per boot, and the mapped values are set on the config repository.
-- Which of the three happened is bound in the container as `ConfigSource` (`cache`, `disabled`, `ssm`), for your own checks.
+- Which of the three happened is bound in the container as `ConfigSource` (`cache`, `disabled`, `ssm`), for the health route or your own checks.
 
 **`php artisan ssm:cache`**
 1. `ClearCachedConfig` removes `bootstrap/cache/config.php`, and fails loudly if it cannot.
@@ -129,6 +130,13 @@ return [
         'REDIS_PASSWORD' => ['database.redis.default.password', 'database.redis.cache.password'],
         'MAIL_PASSWORD' => 'mail.mailers.smtp.password',
     ],
+
+    // JSON route reporting whether the mapped keys are loaded. Never a value.
+    'health' => [
+        'enabled' => (bool) env('SSM_HEALTH_ENABLED', false),
+        'path' => '/ssm/health',
+        'middleware' => [],
+    ],
 ];
 ```
 
@@ -139,6 +147,9 @@ return [
 | `path` | `SSM_PATH`, `/app/tenant-a` | Absolute path fetched recursively; parameter names in `map` are relative to it |
 | `with_decryption` | `true` | Decrypt SecureString values |
 | `map` | a starter set | Parameter name => config key, or a list of keys. Nested names work too (`mail/PASSWORD`) |
+| `health.enabled` | `SSM_HEALTH_ENABLED`, `false` | Register the health route |
+| `health.path` | `/ssm/health` | Route path; the route is named `ssm.health` |
+| `health.middleware` | `[]` | Middleware for the route, e.g. an IP allowlist |
 
 - Bind your own `Aws\Ssm\SsmClient` in the container to replace the one the package builds (an endpoint override, a custom credential provider).
 
@@ -152,6 +163,7 @@ php artisan ssm:pull [--path=.env] [--force] # write the mapped parameters into 
 
 - `ssm:diff` statuses: `same`, `changed`, `missing in SSM`, `missing in config`.
 - `ssm:pull` replaces the mapped keys in place and keeps every other line. It asks before touching an existing file unless `--force`.
+- Health route (`GET /ssm/health` when enabled): `{"loaded": true, "source": "cache", "keys": [...], "missing": []}` with `200`, or `503` while a mapped key is missing. Key names only, never values.
 
 ## Use case: rotating a database password
 
@@ -218,6 +230,7 @@ Wrote 3 keys to /home/dev/app/.env: APP_KEY, DB_PASSWORD, REDIS_PASSWORD
 [laravel-fleet](https://github.com/jpaylaga/laravel-fleet) deploys to the same hosts over SSM Run Command. The two fit together:
 
 - Its `caches` stage already deletes the old cache before `config:cache`. With this package installed, pass a `caches` stage that runs `php artisan ssm:cache` instead and the rebuild is also a fetch.
+- Its `smoke` stage can hit the health route: `"smoke": { "url": "http://127.0.0.1/ssm/health", "host": "app.example.com" }`. A `503` means a mapped key is missing, and the stage rolls the host back.
 - `fleet exec -- php artisan ssm:diff` reports drift across every host at once.
 
 ## Project layout
@@ -228,12 +241,13 @@ Wrote 3 keys to /home/dev/app/.env: APP_KEY, DB_PASSWORD, REDIS_PASSWORD
 
 ```
 src/
-  SsmConfigServiceProvider.php   boot loader and commands
+  SsmConfigServiceProvider.php   boot loader, commands, health route
   Commands/                      CacheCommand, DiffCommand, PullCommand
   Steps/                         ClearCachedConfig, FetchParameters, MapParametersToConfig, ApplyConfig,
                                  WriteConfigCache, DiffParameters, WriteDotEnv
   Support/                       SsmClientFactory, ParameterPath, ParameterMap, FreshConfiguration,
                                  DotEnvFile, ConfigSource
+  Http/                          HealthController
 config/ssm.php                   publishable config
 docs/iam-policy.json             instance profile policy, scoped to one path
 tests/                           Pest + Testbench; SSM faked with the SDK's MockHandler, no network
@@ -246,7 +260,7 @@ composer install
 composer check      # pint --test, phpstan (larastan, level 8), pest
 ```
 
-- The tests cover a paginated fetch, the cached-boot skip, the stale-cache removal in `ssm:cache`, every `ssm:diff` status and exit code, and `ssm:pull` with and without `--force`.
+- The tests cover a paginated fetch, the cached-boot skip, the stale-cache removal in `ssm:cache`, every `ssm:diff` status and exit code, `ssm:pull` with and without `--force`, and a health route that is off by default and never leaks a value.
 
 ## License
 
