@@ -41,9 +41,10 @@ jobs:
       - name: Pin the Laravel version through Testbench
         run: composer require --dev "orchestra/testbench:^${{ matrix.testbench }}.0" --no-update --no-interaction
 
-      # Laravel 9 is past its security-fix window, so Composer refuses it by default.
+      # Laravel 9, 10 and 11 are past their security-fix window and every release has an
+      # open advisory, so Composer refuses them by default. CI only checks compatibility.
       - name: Allow packages with published advisories
-        if: matrix.laravel == '9'
+        if: matrix.laravel != '12'
         run: composer config policy.advisories.block false
 
       - run: composer update --prefer-dist --no-interaction --no-progress
