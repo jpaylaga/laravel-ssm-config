@@ -4,7 +4,7 @@ namespace Jpaylaga\SsmConfig\Support;
 
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Console\Kernel;
-use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Facade;
 
 /**
@@ -27,7 +27,7 @@ class FreshConfiguration
     public function __invoke(): array
     {
         try {
-            /** @var \Illuminate\Foundation\Application $fresh */
+            /** @var Application $fresh */
             $fresh = require $this->app->bootstrapPath().'/app.php';
 
             $fresh->useStoragePath($this->app->storagePath());

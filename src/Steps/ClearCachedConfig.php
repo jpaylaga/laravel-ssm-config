@@ -2,8 +2,8 @@
 
 namespace Jpaylaga\SsmConfig\Steps;
 
-use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Foundation\Application;
 use RuntimeException;
 
 /**
