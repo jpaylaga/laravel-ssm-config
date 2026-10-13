@@ -1,0 +1,60 @@
+{
+    "name": "jpaylaga/laravel-ssm-config",
+    "description": "Load Laravel config from AWS SSM Parameter Store at boot, with a config cache that can never be built from a stale one.",
+    "keywords": ["laravel", "aws", "ssm", "parameter-store", "config", "secrets", "ec2"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Joshua Paylaga"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "aws/aws-sdk-php": "^3.0",
+        "illuminate/console": "^9.0|^10.0|^11.0|^12.0",
+        "illuminate/contracts": "^9.0|^10.0|^11.0|^12.0",
+        "illuminate/support": "^9.0|^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "larastan/larastan": "^2.9|^3.0",
+        "laravel/pint": "^1.0",
+        "orchestra/testbench": "^7.0|^8.0|^9.0|^10.0",
+        "pestphp/pest": "^1.22|^2.0|^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Jpaylaga\\SsmConfig\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Jpaylaga\\SsmConfig\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "pest",
+        "lint": "pint --test",
+        "analyse": "phpstan analyse",
+        "check": [
+            "@lint",
+            "@analyse",
+            "@test"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Jpaylaga\\SsmConfig\\SsmConfigServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

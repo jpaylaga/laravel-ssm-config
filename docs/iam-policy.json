@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadOwnParameterPath",
+      "Effect": "Allow",
+      "Action": "ssm:GetParametersByPath",
+      "Resource": [
+        "arn:aws:ssm:us-west-2:123456789012:parameter/app/tenant-a",
+        "arn:aws:ssm:us-west-2:123456789012:parameter/app/tenant-a/*"
+      ]
+    },
+    {
+      "Sid": "DecryptSecureStrings",
+      "Effect": "Allow",
+      "Action": "kms:Decrypt",
+      "Resource": "arn:aws:kms:us-west-2:123456789012:key/11111111-2222-3333-4444-555555555555",
+      "Condition": {
+        "StringEquals": { "kms:ViaService": "ssm.us-west-2.amazonaws.com" }
+      }
+    }
+  ]
+}
