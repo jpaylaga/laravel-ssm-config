@@ -15,6 +15,7 @@ Laravel config from **AWS SSM Parameter Store**: fetched at boot on hosts withou
 - Each host carries a minimal `.env` (`APP_ENV`, `SSM_ENABLED`, `SSM_PATH`, `AWS_DEFAULT_REGION`). Everything else lives under `/app/tenant-a/...` in Parameter Store.
 - A deploy ends with `php artisan ssm:cache`, so the host runs from a config cache that includes the SSM values.
 - `php artisan ssm:diff` answers "does this host still match Parameter Store?" with statuses only, so its output is safe to paste into a ticket.
+- `php artisan ssm:pull` fills a developer's local `.env` from the same path.
 
 **Limitations**
 - Built for one setup (below): EC2 hosts with instance profiles, one Parameter Store path per host, config cached per host.
@@ -50,7 +51,7 @@ The long version is in [laravel-fleet's README](https://github.com/jpaylaga/lara
 **Trade-offs**
 - **Reads are slow and rate-limited**, so config must be cached and the cache rebuilt carefully. That is what this package is for.
 - **Not live:** changes apply at the next cache rebuild.
-- **Two paths:** local development still uses `.env`.
+- **Two paths:** local development still uses `.env`, which `ssm:pull` fills.
 - **Deploy-time dependency:** if the SSM API is down or throttling, the cache cannot be rebuilt.
 
 ## How it works
@@ -144,11 +145,13 @@ return [
 ## Commands
 
 ```bash
-php artisan ssm:cache    # remove the old cache, fetch, write the new cache
-php artisan ssm:diff     # status per mapped key, no values; exit 1 on drift
+php artisan ssm:cache                        # remove the old cache, fetch, write the new cache
+php artisan ssm:diff                         # status per mapped key, no values; exit 1 on drift
+php artisan ssm:pull [--path=.env] [--force] # write the mapped parameters into a .env
 ```
 
 - `ssm:diff` statuses: `same`, `changed`, `missing in SSM`, `missing in config`.
+- `ssm:pull` replaces the mapped keys in place and keeps every other line. It asks before touching an existing file unless `--force`.
 
 ## Use case: rotating a database password
 
@@ -202,6 +205,14 @@ Comparing 4 parameters under /app/tenant-a with the running config.
 ...
 ```
 
+**5. A developer needs the new value locally**
+
+```console
+$ php artisan ssm:pull
+Fetched 4 parameters from /app/tenant-a.
+Wrote 3 keys to /home/dev/app/.env: APP_KEY, DB_PASSWORD, REDIS_PASSWORD
+```
+
 ## Works with laravel-fleet
 
 [laravel-fleet](https://github.com/jpaylaga/laravel-fleet) deploys to the same hosts over SSM Run Command. The two fit together:
@@ -213,15 +224,16 @@ Comparing 4 parameters under /app/tenant-a with the running config.
 
 - One class per file, named after it.
 - Each command's `handle()` reads as the orchestration, a list of steps and nothing else: `ssm:cache` is `ClearCachedConfig` → `FetchParameters` → `MapParametersToConfig` → `WriteConfigCache`.
-- Steps shared by several entry points live once: `FetchParameters` serves the boot loader and both commands.
+- Steps shared by several entry points live once: `FetchParameters` serves the boot loader and all three commands.
 
 ```
 src/
   SsmConfigServiceProvider.php   boot loader and commands
-  Commands/                      CacheCommand, DiffCommand
+  Commands/                      CacheCommand, DiffCommand, PullCommand
   Steps/                         ClearCachedConfig, FetchParameters, MapParametersToConfig, ApplyConfig,
-                                 WriteConfigCache, DiffParameters
-  Support/                       SsmClientFactory, ParameterPath, ParameterMap, FreshConfiguration, ConfigSource
+                                 WriteConfigCache, DiffParameters, WriteDotEnv
+  Support/                       SsmClientFactory, ParameterPath, ParameterMap, FreshConfiguration,
+                                 DotEnvFile, ConfigSource
 config/ssm.php                   publishable config
 docs/iam-policy.json             instance profile policy, scoped to one path
 tests/                           Pest + Testbench; SSM faked with the SDK's MockHandler, no network
@@ -234,7 +246,7 @@ composer install
 composer check      # pint --test, phpstan (larastan, level 8), pest
 ```
 
-- The tests cover a paginated fetch, the cached-boot skip, the stale-cache removal in `ssm:cache`, and every `ssm:diff` status and exit code.
+- The tests cover a paginated fetch, the cached-boot skip, the stale-cache removal in `ssm:cache`, every `ssm:diff` status and exit code, and `ssm:pull` with and without `--force`.
 
 ## License
 

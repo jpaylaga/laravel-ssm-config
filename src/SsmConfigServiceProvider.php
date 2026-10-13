@@ -8,6 +8,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Jpaylaga\SsmConfig\Commands\CacheCommand;
 use Jpaylaga\SsmConfig\Commands\DiffCommand;
+use Jpaylaga\SsmConfig\Commands\PullCommand;
 use Jpaylaga\SsmConfig\Steps\ApplyConfig;
 use Jpaylaga\SsmConfig\Steps\FetchParameters;
 use Jpaylaga\SsmConfig\Steps\MapParametersToConfig;
@@ -36,7 +37,7 @@ class SsmConfigServiceProvider extends ServiceProvider
         $this->publishes([__DIR__.'/../config/ssm.php' => $this->app->configPath('ssm.php')], 'ssm-config');
 
         if ($this->app->runningInConsole()) {
-            $this->commands([CacheCommand::class, DiffCommand::class]);
+            $this->commands([CacheCommand::class, DiffCommand::class, PullCommand::class]);
         }
     }
 
