@@ -260,6 +260,7 @@ composer install
 composer check      # pint --test, phpstan (larastan, level 8), pest
 ```
 
+- CI runs the suite on PHP 8.1 to 8.4 against Laravel 9 to 12 (minus the pairs they do not support).
 - The tests cover a paginated fetch, the cached-boot skip, the stale-cache removal in `ssm:cache`, every `ssm:diff` status and exit code, `ssm:pull` with and without `--force`, and a health route that is off by default and never leaks a value.
 
 ## License
